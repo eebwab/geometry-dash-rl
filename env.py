@@ -45,6 +45,7 @@ class GeometryDashEnv(gym.Env):
         self._control_cfg: ControlConfig = self.config.control
         self._alive = False
         self._step_count = 0
+        self._episode_reward = 0.0
 
     def reset(
         self,
@@ -64,6 +65,7 @@ class GeometryDashEnv(gym.Env):
         assert obs is not None
         self._alive = True
         self._step_count = 0
+        self._episode_reward = 0.0
         logger.info("Environment reset complete")
         return obs, {}
 
@@ -81,8 +83,20 @@ class GeometryDashEnv(gym.Env):
             reward = self._reward_cfg.survive_reward
 
         self._step_count += 1
+        self._episode_reward += reward
         truncated = False
         info: dict[str, Any] = {"step": self._step_count, "alive": self._alive}
+
+        if terminated:
+            info["episode"] = {
+                "r": self._episode_reward,
+                "l": self._step_count,
+            }
+            logger.info(
+                "Episode done — steps: %d  total reward: %.1f",
+                self._step_count,
+                self._episode_reward,
+            )
 
         return obs, reward, terminated, truncated, info
 
