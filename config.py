@@ -73,10 +73,10 @@ class ModeConfig:
     ship_hold_s: float = 0.055
 
     # Step-count boundaries for ship mode: (start_step, end_step).
-    # Defaults for Stereo Madness at ~30 steps/sec.
-    ship_step_ranges: tuple[tuple[int, int], ...] = ((870, 1440), (2550, 3000))
+    # Calibrated for Stereo Madness at ~30 steps/sec (user-verified).
+    ship_step_ranges: tuple[tuple[int, int], ...] = ((680, 1120), (2120, 99999))
     # Step-count boundaries for ball mode (tap mechanic — same as cube).
-    ball_step_ranges: tuple[tuple[int, int], ...] = ((1440, 1800),)
+    ball_step_ranges: tuple[tuple[int, int], ...] = ((1120, 1400),)
 
     # --- Progress bar (kept for calibrate.py display only) ---
     progress_bar_row: int = 12
