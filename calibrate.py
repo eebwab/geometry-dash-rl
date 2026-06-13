@@ -35,6 +35,7 @@ def preview_capture(config: Config, duration_s: float = 30.0) -> None:
     still_count = 0
     start = time.perf_counter()
     frames = 0
+    episode_step = 0  # resets on each death, mirrors env._step_count
 
     try:
         while time.perf_counter() - start < duration_s:
@@ -51,22 +52,26 @@ def preview_capture(config: Config, duration_s: float = 30.0) -> None:
             prev_gray = gray.copy()
 
             death = still_count >= still_frames_needed
-            mode = pipeline.detect_game_mode(step=frames)
+            if death:
+                episode_step = 0  # reset on death, same as env reset()
+
+            mode = pipeline.detect_game_mode(step=episode_step)
 
             display = cv2.resize(processed, (420, 420), interpolation=cv2.INTER_NEAREST)
             status = "DEATH" if death else "ALIVE"
-            cv2.putText(display, f"{status}  {mode.value.upper()}  step={frames}",
+            cv2.putText(display, f"{status}  {mode.value.upper()}  step={episode_step}",
                         (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, 255, 2)
             cv2.imshow("Geometry Dash RL — Preprocessed", display)
 
             sys.stdout.write(
-                f"\r  step={frames:<5}  diff={diff:5.2f}  still={still_count}  "
+                f"\r  step={episode_step:<5}  diff={diff:5.2f}  still={still_count}  "
                 f"mode={mode.value:<5}  "
                 f"{'*** DEATH ***' if death else 'alive         '}"
             )
             sys.stdout.flush()
 
             frames += 1
+            episode_step += 1
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
     finally:
