@@ -73,10 +73,10 @@ class ModeConfig:
     # How long to hold space for one ship-mode action step (seconds).
     ship_hold_s: float = 0.055
 
-    # Ship ranges as (start_frac, end_frac) pairs.
-    ship_ranges: tuple[tuple[float, float], ...] = ((0.18, 0.47), (0.73, 0.85))
+    # Ship ranges as (start_frac, end_frac) pairs — Stereo Madness verified.
+    ship_ranges: tuple[tuple[float, float], ...] = ((0.29, 0.48), (0.85, 1.00))
     # Ball ranges — gravity-flip: tap mechanic same as cube.
-    ball_ranges: tuple[tuple[float, float], ...] = ((0.47, 0.60),)
+    ball_ranges: tuple[tuple[float, float], ...] = ((0.48, 0.60),)
 
 
 @dataclass
