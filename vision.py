@@ -136,7 +136,45 @@ class VisionPipeline:
 
         return np.stack(list(self._frame_stack), axis=0)
 
-    def detect_progress(self, frame_bgra: np.ndarray | None = None) -> float:
+    def wait_for_motion(
+        self,
+        motion_threshold: float = 3.0,
+        min_motion_frames: int = 3,
+        timeout_frames: int = 300,
+        sleep_s: float = 0.05,
+    ) -> bool:
+        """Block until the level is visibly scrolling (frames are changing).
+
+        Polls pairs of consecutive frames and waits until `min_motion_frames`
+        in a row all exceed `motion_threshold`. Called after click_restart() so
+        the episode never starts on a static loading / attempt-counter screen.
+
+        Returns True if motion detected, False if timed out.
+        """
+        import time as _time
+        consecutive = 0
+        prev = None
+        for _ in range(timeout_frames):
+            raw = self.capture_raw()
+            gray = cv2.cvtColor(raw, cv2.COLOR_BGRA2GRAY)
+            if prev is not None:
+                diff = float(
+                    np.mean(np.abs(gray.astype(np.int16) - prev.astype(np.int16)))
+                )
+                if diff >= motion_threshold:
+                    consecutive += 1
+                    if consecutive >= min_motion_frames:
+                        logger.info("Level motion detected — starting episode")
+                        self.reset_death_state(grace_frames=0)
+                        return True
+                else:
+                    consecutive = 0
+            prev = gray
+            _time.sleep(sleep_s)
+
+        logger.warning("wait_for_motion timed out — starting episode anyway")
+        self.reset_death_state(grace_frames=30)
+        return False
         """Estimate level completion as a fraction in [0, 1].
 
         Scans a single row near the top of the raw frame for the rightmost
