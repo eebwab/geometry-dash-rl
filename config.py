@@ -7,10 +7,10 @@ from dataclasses import dataclass, field
 class CaptureConfig:
     """BlueStacks window bounding box in screen coordinates (pixels)."""
 
-    left: int = 0
-    top: int = 0
-    width: int = 1280
-    height: int = 720
+    left: int = 260
+    top: int = 191
+    width: int = 960
+    height: int = 537
 
     @property
     def monitor(self) -> dict[str, int]:
@@ -30,9 +30,15 @@ class VisionConfig:
     stack_depth: int = 4
     # Binary threshold applied after grayscale resize (0-255).
     threshold: int = 127
-    # Fraction of pixels in death flash region that must exceed this brightness.
+    # --- Stillness-based death detection (primary, works with auto-retry off) ---
+    # Mean absolute pixel difference below this value = frames are frozen = dead.
+    death_still_threshold: float = 1.5
+    # How many consecutive still frames required to confirm death (avoids brief pauses).
+    death_still_frames: int = 8
+
+    # --- Flash-based detection (fallback, disabled by default) ---
     death_flash_brightness: int = 200
-    death_flash_pixel_ratio: float = 0.35
+    death_flash_pixel_ratio: float = 0.95   # effectively disabled (set < 1.0 to re-enable)
     # Optional template path for "Game Over" text (cv2.matchTemplate).
     death_template_path: str | None = None
     death_template_threshold: float = 0.75

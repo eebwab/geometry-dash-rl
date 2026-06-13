@@ -56,6 +56,7 @@ class GeometryDashEnv(gym.Env):
         super().reset(seed=seed)
 
         self.controls.click_restart()
+        self.vision.reset_death_state()
 
         # Warmup frames let the level load before the agent acts.
         obs = None

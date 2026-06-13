@@ -45,6 +45,10 @@ class VisionPipeline:
             maxlen=self._stack_depth,
         )
 
+        # Stillness detection state.
+        self._prev_gray: np.ndarray | None = None
+        self._still_count: int = 0
+
         self._death_template: np.ndarray | None = None
         if vision.death_template_path:
             template = cv2.imread(vision.death_template_path, cv2.IMREAD_GRAYSCALE)
@@ -134,11 +138,15 @@ class VisionPipeline:
         frame_bgra: np.ndarray | None = None,
         vision: VisionConfig | None = None,
     ) -> bool:
-        """Detect death via screen flash and/or template matching."""
+        """Detect death via frame stillness (primary) or flash / template (fallback)."""
         vision = vision or self._vision
 
         if frame_bgra is None:
             frame_bgra = self._raw_bgra if self._raw_bgra is not None else self.capture_raw()
+
+        if self._detect_death_stillness(frame_bgra, vision):
+            logger.info("Game Over Detected (stillness)")
+            return True
 
         if self._detect_death_flash(frame_bgra, vision):
             logger.info("Game Over Detected (flash)")
@@ -150,6 +158,35 @@ class VisionPipeline:
 
         return False
 
+    def reset_death_state(self) -> None:
+        """Clear stillness counters on env reset so warmup frames don't trigger death."""
+        self._prev_gray = None
+        self._still_count = 0
+
+    def _detect_death_stillness(self, frame_bgra: np.ndarray, vision: VisionConfig) -> bool:
+        """Return True once N consecutive frames differ by less than the still threshold.
+
+        During live gameplay the level scrolls continuously, so mean absolute
+        frame difference stays well above the threshold. The death screen is
+        completely static, so the diff collapses to near zero immediately.
+        """
+        gray = cv2.cvtColor(frame_bgra, cv2.COLOR_BGRA2GRAY)
+
+        if self._prev_gray is None or self._prev_gray.shape != gray.shape:
+            self._prev_gray = gray.copy()
+            self._still_count = 0
+            return False
+
+        diff = float(np.mean(np.abs(gray.astype(np.int16) - self._prev_gray.astype(np.int16))))
+        self._prev_gray = gray.copy()
+
+        if diff < vision.death_still_threshold:
+            self._still_count += 1
+        else:
+            self._still_count = 0
+
+        return self._still_count >= vision.death_still_frames
+
     def _detect_death_flash(self, frame_bgra: np.ndarray, vision: VisionConfig) -> bool:
         """Bright-pixel ratio in center region indicates the death flash."""
         h, w = frame_bgra.shape[:2]
@@ -157,7 +194,6 @@ class VisionPipeline:
         x0, x1 = int(w * 0.25), int(w * 0.75)
         region = frame_bgra[y0:y1, x0:x1, :3]
 
-        # Use max channel brightness per pixel.
         brightness = region.max(axis=2)
         bright_ratio = (brightness >= vision.death_flash_brightness).mean()
         return bright_ratio >= vision.death_flash_pixel_ratio
