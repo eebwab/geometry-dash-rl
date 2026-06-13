@@ -65,13 +65,8 @@ class GeometryDashEnv(gym.Env):
         super().reset(seed=seed)
 
         self.controls.click_restart()
+        self.vision.reset_death_state()
 
-        # Block until the level is actually scrolling — prevents starting an
-        # episode on a static loading/attempt-counter screen.
-        # reset_death_state() is called inside wait_for_motion() once motion detected.
-        self.vision.wait_for_motion()
-
-        # A few warmup frames to seed the frame stack after motion is detected.
         obs = None
         for _ in range(self._control_cfg.post_reset_warmup_frames):
             obs = self.vision.reset_stack()

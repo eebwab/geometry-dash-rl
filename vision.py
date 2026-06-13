@@ -50,7 +50,6 @@ class VisionPipeline:
         # Stillness detection state.
         self._prev_gray: np.ndarray | None = None
         self._still_count: int = 0
-        self._grace_remaining: int = 0  # frames after reset where death is suppressed
 
         self._death_template: np.ndarray | None = None
         if vision.death_template_path:
@@ -136,45 +135,7 @@ class VisionPipeline:
 
         return np.stack(list(self._frame_stack), axis=0)
 
-    def wait_for_motion(
-        self,
-        motion_threshold: float = 3.0,
-        min_motion_frames: int = 2,
-        timeout_frames: int = 300,
-        sleep_s: float = 0.03,
-    ) -> bool:
-        """Block until the level is visibly scrolling (frames are changing).
-
-        Polls pairs of consecutive frames and waits until `min_motion_frames`
-        in a row all exceed `motion_threshold`. Called after click_restart() so
-        the episode never starts on a static loading / attempt-counter screen.
-
-        Returns True if motion detected, False if timed out.
-        """
-        import time as _time
-        consecutive = 0
-        prev = None
-        for _ in range(timeout_frames):
-            raw = self.capture_raw()
-            gray = cv2.cvtColor(raw, cv2.COLOR_BGRA2GRAY)
-            if prev is not None:
-                diff = float(
-                    np.mean(np.abs(gray.astype(np.int16) - prev.astype(np.int16)))
-                )
-                if diff >= motion_threshold:
-                    consecutive += 1
-                    if consecutive >= min_motion_frames:
-                        logger.info("Level motion detected — starting episode")
-                        self.reset_death_state(grace_frames=0)
-                        return True
-                else:
-                    consecutive = 0
-            prev = gray
-            _time.sleep(sleep_s)
-
-        logger.warning("wait_for_motion timed out — starting episode anyway")
-        self.reset_death_state(grace_frames=30)
-        return False
+    def detect_progress(self, frame_bgra: np.ndarray | None = None) -> float:
         """Estimate level completion as a fraction in [0, 1].
 
         Scans a single row near the top of the raw frame for the rightmost
@@ -256,28 +217,18 @@ class VisionPipeline:
 
         return False
 
-    def reset_death_state(self, grace_frames: int = 60) -> None:
-        """Clear stillness counters on env reset.
-
-        grace_frames: steps to suppress death detection after reset so the
-        level has time to load before stillness can trigger.
-        """
+    def reset_death_state(self) -> None:
+        """Clear stillness counters on env reset so warmup frames don't trigger death."""
         self._prev_gray = None
         self._still_count = 0
-        self._grace_remaining = grace_frames
 
     def _detect_death_stillness(self, frame_bgra: np.ndarray, vision: VisionConfig) -> bool:
         """Return True once N consecutive frames differ by less than the still threshold.
 
-        Suppressed for the first grace_frames steps after a reset so loading
-        screens don't trigger a false death.
+        During live gameplay the level scrolls continuously, so mean absolute
+        frame difference stays well above the threshold. The death screen is
+        completely static, so the diff collapses to near zero immediately.
         """
-        if self._grace_remaining > 0:
-            self._grace_remaining -= 1
-            self._prev_gray = None
-            self._still_count = 0
-            return False
-
         gray = cv2.cvtColor(frame_bgra, cv2.COLOR_BGRA2GRAY)
 
         if self._prev_gray is None or self._prev_gray.shape != gray.shape:
