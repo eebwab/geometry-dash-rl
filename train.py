@@ -72,7 +72,7 @@ def train(config: Config | None = None, resume_path: str | None = None) -> None:
         save_freq=train_cfg.checkpoint_freq,
         save_path=str(model_dir),
         name_prefix="dqn_gd",
-        save_replay_buffer=True,
+        save_replay_buffer=False,  # 5.3GB per save fills disk fast
     )
 
     logger.info("Starting training for %d timesteps", train_cfg.total_timesteps)

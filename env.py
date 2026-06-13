@@ -54,6 +54,7 @@ class GeometryDashEnv(gym.Env):
         self._step_count = 0
         self._episode_reward = 0.0
         self._current_mode: GameMode = GameMode.CUBE
+        self._best_step: int = 0  # personal best across all episodes
 
     def reset(
         self,
@@ -93,6 +94,11 @@ class GeometryDashEnv(gym.Env):
             self._alive = False
         else:
             reward = self._reward_cfg.survive_reward
+            # Small bonus for reaching a new personal best step — encourages
+            # the agent to push further rather than playing it safe early.
+            if self._step_count > self._best_step:
+                reward += 0.5
+                self._best_step = self._step_count
 
         self._step_count += 1
         self._episode_reward += reward
