@@ -12,12 +12,15 @@ from config import Config
 from vision import VisionPipeline
 
 
+
+
+
 def preview_capture(config: Config, duration_s: float = 30.0) -> None:
-    """Show live preprocessed frames with stillness-based death diagnostic."""
+    """Show live preprocessed frames with stillness, mode, and progress diagnostics."""
     import sys
     import numpy as np
 
-    pipeline = VisionPipeline(config.capture, config.vision)
+    pipeline = VisionPipeline(config.capture, config.vision, config.mode)
     still_threshold = config.vision.death_still_threshold
     still_frames_needed = config.vision.death_still_frames
     print(
@@ -50,13 +53,18 @@ def preview_capture(config: Config, duration_s: float = 30.0) -> None:
             prev_gray = gray.copy()
 
             death = still_count >= still_frames_needed
+            progress = pipeline.detect_progress(raw)
+            mode = pipeline.detect_game_mode(raw)
+
             display = cv2.resize(processed, (420, 420), interpolation=cv2.INTER_NEAREST)
-            label = f"DEATH  diff={diff:.2f}" if death else f"ALIVE  diff={diff:.2f}"
-            cv2.putText(display, label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, 255, 2)
+            status = "DEATH" if death else "ALIVE"
+            cv2.putText(display, f"{status}  {mode.value.upper()}  {progress*100:.1f}%",
+                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, 255, 2)
             cv2.imshow("Geometry Dash RL — Preprocessed", display)
 
             sys.stdout.write(
-                f"\r  frame_diff={diff:6.2f}  still_streak={still_count}  "
+                f"\r  diff={diff:5.2f}  still={still_count}  "
+                f"progress={progress*100:5.1f}%  mode={mode.value:<5}  "
                 f"{'*** DEATH ***' if death else 'alive         '}"
             )
             sys.stdout.flush()
@@ -134,23 +142,23 @@ def locate_mouse() -> None:
             sys.stdout.flush()
             time.sleep(0.05)
     except KeyboardInterrupt:
-        print("\nDone.")
+        print("\nDone.")        
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Calibrate capture region and preview vision pipeline")
+    parser = argparse.Argum          entParser(description="Calibrate capture region and preview vision pipeline")
     parser.add_argument("--duration", type=float, default=10.0, help="Preview duration in seconds")
     parser.add_argument("--left", type=int, default=None)
     parser.add_argument("--top", type=int, default=None)
-    parser.add_argument("--width", type=int, default=None)
+    parser.add_argument("--       width", type=int, default=None)
     parser.add_argument("--height", type=int, default=None)
     parser.add_argument("--instructions", action="store_true", help="Print setup instructions only")
     parser.add_argument("--locate", action="store_true", help="Print live mouse coordinates (macOS/Linux)")
-    return parser.parse_args()
+    return parser.parse_arg        s()
 
 
 def main() -> None:
-    args = parse_args()
+    args = parse_args()     
 
     if args.instructions:
         pick_region()

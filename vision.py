@@ -9,7 +9,7 @@ import cv2
 import mss
 import numpy as np
 
-from config import CaptureConfig, VisionConfig
+from config import CaptureConfig, GameMode, ModeConfig, VisionConfig
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +21,11 @@ class VisionPipeline:
         self,
         capture: CaptureConfig,
         vision: VisionConfig,
+        mode: ModeConfig | None = None,
     ) -> None:
         self._capture = capture
         self._vision = vision
+        self._mode = mode or ModeConfig()
         self._sct = mss.mss()
         self._monitor = capture.monitor
 
@@ -132,6 +134,47 @@ class VisionPipeline:
             self._frame_stack.append(frame.copy())
 
         return np.stack(list(self._frame_stack), axis=0)
+
+    def detect_progress(self, frame_bgra: np.ndarray | None = None) -> float:
+        """Estimate level completion as a fraction in [0, 1].
+
+        Scans a single row near the top of the raw frame for the rightmost
+        bright pixel — that pixel's x-position divided by frame width gives
+        the progress fraction. The GD progress bar fills left-to-right.
+
+        Returns:
+            Progress fraction in [0.0, 1.0]. Returns 0.0 if nothing detected.
+        """
+        if frame_bgra is None:
+            frame_bgra = self._raw_bgra if self._raw_bgra is not None else self.capture_raw()
+
+        row_idx = min(self._mode.progress_bar_row, frame_bgra.shape[0] - 1)
+        row = frame_bgra[row_idx, :, :3]                    # (W, 3) BGR
+        brightness = row.max(axis=1)                         # (W,) max channel per pixel
+        bright_cols = np.where(brightness >= self._mode.progress_brightness)[0]
+
+        if len(bright_cols) == 0:
+            return 0.0
+
+        return float(bright_cols[-1]) / float(frame_bgra.shape[1] - 1)
+
+    def detect_game_mode(self, frame_bgra: np.ndarray | None = None) -> GameMode:
+        """Return the current game mode by reading the progress bar position.
+
+        Maps the progress fraction to Stereo Madness segment boundaries stored
+        in ModeConfig. Defaults to CUBE if progress can't be read.
+        """
+        progress = self.detect_progress(frame_bgra)
+
+        for start, end in self._mode.ship_ranges:
+            if start <= progress < end:
+                return GameMode.SHIP
+
+        for start, end in self._mode.ball_ranges:
+            if start <= progress < end:
+                return GameMode.BALL
+
+        return GameMode.CUBE
 
     def detect_death(
         self,

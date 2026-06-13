@@ -9,7 +9,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
-from config import Config, ControlConfig, RewardConfig
+from config import Config, ControlConfig, GameMode, RewardConfig
 from controls import GameControls
 from vision import VisionPipeline
 
@@ -24,9 +24,14 @@ class GeometryDashEnv(gym.Env):
     def __init__(self, config: Config | None = None) -> None:
         super().__init__()
         self.config = config or Config()
-        self.vision = VisionPipeline(self.config.capture, self.config.vision)
+        self.vision = VisionPipeline(
+            self.config.capture,
+            self.config.vision,
+            self.config.mode,
+        )
         self.controls = GameControls(
             self.config.control,
+            mode_config=self.config.mode,
             capture_offset=(self.config.capture.left, self.config.capture.top),
             window_app_name=self.config.control.window_app_name,
         )
@@ -34,7 +39,8 @@ class GeometryDashEnv(gym.Env):
         stack = self.config.vision.stack_depth
         size = self.config.vision.frame_size
 
-        self.action_space = spaces.Discrete(2)
+        # 3 actions: 0 = noop, 1 = tap (cube/ball), 2 = hold (ship thrust)
+        self.action_space = spaces.Discrete(3)
         self.observation_space = spaces.Box(
             low=0,
             high=255,
@@ -47,6 +53,7 @@ class GeometryDashEnv(gym.Env):
         self._alive = False
         self._step_count = 0
         self._episode_reward = 0.0
+        self._current_mode: GameMode = GameMode.CUBE
 
     def reset(
         self,
@@ -59,7 +66,6 @@ class GeometryDashEnv(gym.Env):
         self.controls.click_restart()
         self.vision.reset_death_state()
 
-        # Warmup frames let the level load before the agent acts.
         obs = None
         for _ in range(self._control_cfg.post_reset_warmup_frames):
             obs = self.vision.reset_stack()
@@ -68,13 +74,17 @@ class GeometryDashEnv(gym.Env):
         self._alive = True
         self._step_count = 0
         self._episode_reward = 0.0
+        self._current_mode = GameMode.CUBE
         logger.info("Environment reset complete")
         return obs, {}
 
     def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
-        self.controls.do_action(int(action))
-
         raw = self.vision.capture_raw()
+
+        # Detect mode before acting so the correct mechanic is used.
+        self._current_mode = self.vision.detect_game_mode(raw)
+        self.controls.do_action(int(action), self._current_mode)
+
         terminated = self.vision.detect_death(raw)
         obs = self.vision.push_frame(self.vision.preprocess(raw))
 
@@ -87,7 +97,11 @@ class GeometryDashEnv(gym.Env):
         self._step_count += 1
         self._episode_reward += reward
         truncated = False
-        info: dict[str, Any] = {"step": self._step_count, "alive": self._alive}
+        info: dict[str, Any] = {
+            "step": self._step_count,
+            "alive": self._alive,
+            "mode": self._current_mode.value,
+        }
 
         if terminated:
             info["episode"] = {
@@ -95,9 +109,10 @@ class GeometryDashEnv(gym.Env):
                 "l": self._step_count,
             }
             logger.info(
-                "Episode done — steps: %d  total reward: %.1f",
+                "Episode done — steps: %d  total reward: %.1f  last mode: %s",
                 self._step_count,
                 self._episode_reward,
+                self._current_mode.value,
             )
 
         return obs, reward, terminated, truncated, info
