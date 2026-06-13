@@ -102,7 +102,7 @@ class ControlConfig:
     restart_button_x: int = 302
     restart_button_y: int = 458
     restart_click_delay_s: float = 0.5
-    post_reset_warmup_frames: int = 30
+    post_reset_warmup_frames: int = 4
 
 
 @dataclass

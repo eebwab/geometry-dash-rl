@@ -139,9 +139,9 @@ class VisionPipeline:
     def wait_for_motion(
         self,
         motion_threshold: float = 3.0,
-        min_motion_frames: int = 3,
+        min_motion_frames: int = 2,
         timeout_frames: int = 300,
-        sleep_s: float = 0.05,
+        sleep_s: float = 0.03,
     ) -> bool:
         """Block until the level is visibly scrolling (frames are changing).
 
