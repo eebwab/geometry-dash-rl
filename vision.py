@@ -50,6 +50,7 @@ class VisionPipeline:
         # Stillness detection state.
         self._prev_gray: np.ndarray | None = None
         self._still_count: int = 0
+        self._grace_remaining: int = 0  # frames after reset where death is suppressed
 
         self._death_template: np.ndarray | None = None
         if vision.death_template_path:
@@ -217,18 +218,28 @@ class VisionPipeline:
 
         return False
 
-    def reset_death_state(self) -> None:
-        """Clear stillness counters on env reset so warmup frames don't trigger death."""
+    def reset_death_state(self, grace_frames: int = 60) -> None:
+        """Clear stillness counters on env reset.
+
+        grace_frames: steps to suppress death detection after reset so the
+        level has time to load before stillness can trigger.
+        """
         self._prev_gray = None
         self._still_count = 0
+        self._grace_remaining = grace_frames
 
     def _detect_death_stillness(self, frame_bgra: np.ndarray, vision: VisionConfig) -> bool:
         """Return True once N consecutive frames differ by less than the still threshold.
 
-        During live gameplay the level scrolls continuously, so mean absolute
-        frame difference stays well above the threshold. The death screen is
-        completely static, so the diff collapses to near zero immediately.
+        Suppressed for the first grace_frames steps after a reset so loading
+        screens don't trigger a false death.
         """
+        if self._grace_remaining > 0:
+            self._grace_remaining -= 1
+            self._prev_gray = None
+            self._still_count = 0
+            return False
+
         gray = cv2.cvtColor(frame_bgra, cv2.COLOR_BGRA2GRAY)
 
         if self._prev_gray is None or self._prev_gray.shape != gray.shape:
