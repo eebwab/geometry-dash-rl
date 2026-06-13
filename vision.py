@@ -218,8 +218,13 @@ class VisionPipeline:
         return False
 
     def reset_death_state(self) -> None:
-        """Clear stillness counters on env reset so warmup frames don't trigger death."""
-        self._prev_gray = None
+        """Reset stillness counter on env reset.
+
+        _prev_gray is intentionally kept from the last episode so that
+        detect_death() has a valid comparison frame from the very first step —
+        no blind 'cold-start' frame at the top of each episode.
+        Only _still_count is cleared to prevent a stale streak carrying over.
+        """
         self._still_count = 0
 
     def _detect_death_stillness(self, frame_bgra: np.ndarray, vision: VisionConfig) -> bool:
