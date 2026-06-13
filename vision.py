@@ -158,20 +158,36 @@ class VisionPipeline:
 
         return float(bright_cols[-1]) / float(frame_bgra.shape[1] - 1)
 
-    def detect_game_mode(self, frame_bgra: np.ndarray | None = None) -> GameMode:
-        """Return the current game mode by reading the progress bar position.
+    def detect_game_mode(
+        self,
+        frame_bgra: np.ndarray | None = None,
+        step: int | None = None,
+    ) -> GameMode:
+        """Return the current game mode.
 
-        Maps the progress fraction to Stereo Madness segment boundaries stored
-        in ModeConfig. Defaults to CUBE if progress can't be read.
+        Uses step-count boundaries by default (reliable for a deterministic
+        level). Falls back to progress-bar scanning if use_progress_bar=True.
         """
-        progress = self.detect_progress(frame_bgra)
+        if self._mode.use_progress_bar:
+            progress = self.detect_progress(frame_bgra)
+            for start, end in self._mode.ship_ranges:
+                if start <= progress < end:
+                    return GameMode.SHIP
+            for start, end in self._mode.ball_ranges:
+                if start <= progress < end:
+                    return GameMode.BALL
+            return GameMode.CUBE
 
-        for start, end in self._mode.ship_ranges:
-            if start <= progress < end:
+        # Step-count based detection (default).
+        if step is None:
+            return GameMode.CUBE
+
+        for start, end in self._mode.ship_step_ranges:
+            if start <= step < end:
                 return GameMode.SHIP
 
-        for start, end in self._mode.ball_ranges:
-            if start <= progress < end:
+        for start, end in self._mode.ball_step_ranges:
+            if start <= step < end:
                 return GameMode.BALL
 
         return GameMode.CUBE

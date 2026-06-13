@@ -81,8 +81,8 @@ class GeometryDashEnv(gym.Env):
     def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         raw = self.vision.capture_raw()
 
-        # Detect mode before acting so the correct mechanic is used.
-        self._current_mode = self.vision.detect_game_mode(raw)
+        # Detect mode before acting — pass current step for step-count method.
+        self._current_mode = self.vision.detect_game_mode(raw, step=self._step_count)
         self.controls.do_action(int(action), self._current_mode)
 
         terminated = self.vision.detect_death(raw)

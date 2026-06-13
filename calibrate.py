@@ -51,18 +51,17 @@ def preview_capture(config: Config, duration_s: float = 30.0) -> None:
             prev_gray = gray.copy()
 
             death = still_count >= still_frames_needed
-            progress = pipeline.detect_progress(raw)
-            mode = pipeline.detect_game_mode(raw)
+            mode = pipeline.detect_game_mode(step=frames)
 
             display = cv2.resize(processed, (420, 420), interpolation=cv2.INTER_NEAREST)
             status = "DEATH" if death else "ALIVE"
-            cv2.putText(display, f"{status}  {mode.value.upper()}  {progress*100:.1f}%",
+            cv2.putText(display, f"{status}  {mode.value.upper()}  step={frames}",
                         (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, 255, 2)
             cv2.imshow("Geometry Dash RL — Preprocessed", display)
 
             sys.stdout.write(
-                f"\r  diff={diff:5.2f}  still={still_count}  "
-                f"progress={progress*100:5.1f}%  mode={mode.value:<5}  "
+                f"\r  step={frames:<5}  diff={diff:5.2f}  still={still_count}  "
+                f"mode={mode.value:<5}  "
                 f"{'*** DEATH ***' if death else 'alive         '}"
             )
             sys.stdout.flush()
@@ -145,7 +144,7 @@ def locate_mouse() -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Calibrate capture region and preview vision pipeline")
-    parser.add_argument("--duration", type=float, default=10.0, help="Preview duration in seconds")
+    parser.add_argument("--duration", type=float, default=30.0, help="Preview duration in seconds")
     parser.add_argument("--left", type=int, default=None)
     parser.add_argument("--top", type=int, default=None)
     parser.add_argument("--width", type=int, default=None)
