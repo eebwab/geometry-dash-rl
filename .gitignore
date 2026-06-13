@@ -18,3 +18,11 @@ models/
 
 # TensorBoard / logs
 events.out.tfevents.*
+*.log
+
+# Calibration artifacts
+capture_frame_*.png
+death_template.png
+
+# macOS extended attributes
+*.DS_Store
