@@ -3,6 +3,6 @@ stable-baselines3>=2.3.0
 mss>=9.0.0
 opencv-python>=4.9.0
 numpy>=1.26.0
-pydirectinput>=1.0.4
+pynput>=1.7.6
 tensorboard>=2.16.0
 torch>=2.2.0
