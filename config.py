@@ -41,8 +41,10 @@ class VisionConfig:
     threshold: int = 127
 
     # --- Stillness-based death detection ---
-    death_still_threshold: float = 1.5
-    death_still_frames: int = 8
+    death_still_threshold: float = 2.0
+    # 20 frames @ 30fps = 0.67s — real deaths stay frozen indefinitely,
+    # safe to require more frames to eliminate false positives on low-motion sections.
+    death_still_frames: int = 20
 
     # --- Flash-based detection (fallback, effectively disabled) ---
     death_flash_brightness: int = 200
