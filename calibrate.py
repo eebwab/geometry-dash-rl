@@ -13,8 +13,6 @@ from vision import VisionPipeline
 
 
 
-
-
 def preview_capture(config: Config, duration_s: float = 30.0) -> None:
     """Show live preprocessed frames with stillness, mode, and progress diagnostics."""
     import sys
@@ -142,23 +140,23 @@ def locate_mouse() -> None:
             sys.stdout.flush()
             time.sleep(0.05)
     except KeyboardInterrupt:
-        print("\nDone.")        
+        print("\nDone.")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.Argum          entParser(description="Calibrate capture region and preview vision pipeline")
+    parser = argparse.ArgumentParser(description="Calibrate capture region and preview vision pipeline")
     parser.add_argument("--duration", type=float, default=10.0, help="Preview duration in seconds")
     parser.add_argument("--left", type=int, default=None)
     parser.add_argument("--top", type=int, default=None)
-    parser.add_argument("--       width", type=int, default=None)
+    parser.add_argument("--width", type=int, default=None)
     parser.add_argument("--height", type=int, default=None)
     parser.add_argument("--instructions", action="store_true", help="Print setup instructions only")
     parser.add_argument("--locate", action="store_true", help="Print live mouse coordinates (macOS/Linux)")
-    return parser.parse_arg        s()
+    return parser.parse_args()
 
 
 def main() -> None:
-    args = parse_args()     
+    args = parse_args()
 
     if args.instructions:
         pick_region()
