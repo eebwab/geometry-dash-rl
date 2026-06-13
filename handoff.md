@@ -25,6 +25,7 @@ Focuses on building the computer vision pipeline, standardizing the environment,
 Once Phase 1 successfully clears the level, `stable-baselines3` will be stripped out. The Gymnasium environment and vision pipeline will remain.
 
 * **The Brain:** A custom Convolutional Neural Network (CNN), Replay Memory Buffer, and Deep Q-Learning training loop written entirely from scratch in `PyTorch`.
+* **Hardware Acceleration:** Explore MPS (Metal Performance Shaders) backend for Apple Silicon GPU. PyTorch supports MPS but SB3's DQN has known instability on it. In Phase 2 with a custom training loop, the gradient update step can be selectively moved to MPS while game interaction stays on CPU — targeting 2–3x speedup on MacBook Air without requiring NVIDIA hardware or cloud infra.
 
 ---
 
