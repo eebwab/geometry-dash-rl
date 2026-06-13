@@ -53,9 +53,11 @@ class RewardConfig:
 @dataclass
 class ControlConfig:
     jump_key: str = "space"
+    # macOS app name to focus before sending input (keeps keystrokes off the IDE).
+    window_app_name: str = "BlueStacks"
     # Screen coordinates of the in-game restart button (relative to capture region).
-    restart_button_x: int = 640
-    restart_button_y: int = 400
+    restart_button_x: int = 302
+    restart_button_y: int = 458
     restart_click_delay_s: float = 0.5
     post_reset_warmup_frames: int = 30
 

@@ -28,6 +28,7 @@ class GeometryDashEnv(gym.Env):
         self.controls = GameControls(
             self.config.control,
             capture_offset=(self.config.capture.left, self.config.capture.top),
+            window_app_name=self.config.control.window_app_name,
         )
 
         stack = self.config.vision.stack_depth
