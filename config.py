@@ -41,10 +41,11 @@ class VisionConfig:
     threshold: int = 127
 
     # --- Stillness-based death detection ---
-    death_still_threshold: float = 20.0
-    # 20 frames @ 30fps = 0.67s — real deaths stay frozen indefinitely,
-    # safe to require more frames to eliminate false positives on low-motion sections.
-    death_still_frames: int = 20
+    death_still_threshold: float = 2.0
+    # 50 frames @ ~26fps = ~2 seconds. Real deaths freeze indefinitely; the
+    # higher frame count absorbs BlueStacks rendering stutters that occur when
+    # PyTorch training competes for CPU, preventing false positives mid-run.
+    death_still_frames: int = 50
 
     # --- Flash-based detection (fallback, effectively disabled) ---
     death_flash_brightness: int = 200
