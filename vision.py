@@ -203,7 +203,13 @@ class VisionPipeline:
         if frame_bgra is None:
             frame_bgra = self._raw_bgra if self._raw_bgra is not None else self.capture_raw()
 
-        if self._detect_death_stillness(frame_bgra, vision):
+        # Preprocess to 84x84 binarized before stillness check.
+        # The raw 960x537 frame scrolls only a thin strip per tick, giving a
+        # mean diff < 2.0 even during live gameplay. The binarized 84x84 frame
+        # has pixels that are strictly 0 or 255, so any moving block edge
+        # produces a clearly non-zero mean diff, making the threshold reliable.
+        processed = self.preprocess(frame_bgra)
+        if self._detect_death_stillness(processed, vision):
             logger.info("Game Over Detected (stillness)")
             return True
 
@@ -222,22 +228,22 @@ class VisionPipeline:
         self._prev_gray = None
         self._still_count = 0
 
-    def _detect_death_stillness(self, frame_bgra: np.ndarray, vision: VisionConfig) -> bool:
+    def _detect_death_stillness(self, frame: np.ndarray, vision: VisionConfig) -> bool:
         """Return True once N consecutive frames differ by less than the still threshold.
 
-        During live gameplay the level scrolls continuously, so mean absolute
-        frame difference stays well above the threshold. The death screen is
-        completely static, so the diff collapses to near zero immediately.
+        Expects a preprocessed 84x84 binarized frame (pixels are 0 or 255).
+        During live gameplay block edges scroll through the frame, keeping the
+        mean absolute diff well above the threshold. The death screen and the
+        static attempt-counter overlay are completely still → diff collapses to 0.
         """
-        gray = cv2.cvtColor(frame_bgra, cv2.COLOR_BGRA2GRAY)
-
-        if self._prev_gray is None or self._prev_gray.shape != gray.shape:
-            self._prev_gray = gray.copy()
+        # frame is already (84, 84) uint8 binarized — no grayscale conversion needed.
+        if self._prev_gray is None or self._prev_gray.shape != frame.shape:
+            self._prev_gray = frame.copy()
             self._still_count = 0
             return False
 
-        diff = float(np.mean(np.abs(gray.astype(np.int16) - self._prev_gray.astype(np.int16))))
-        self._prev_gray = gray.copy()
+        diff = float(np.mean(np.abs(frame.astype(np.int16) - self._prev_gray.astype(np.int16))))
+        self._prev_gray = frame.copy()
 
         if diff < vision.death_still_threshold:
             self._still_count += 1
